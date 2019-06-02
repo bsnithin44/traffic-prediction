@@ -102,4 +102,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-.vscode/
+
+.python_packages
+traffic-prediction.zip
