@@ -11,7 +11,7 @@ import datetime,json,logging
 
 my_account_name = 'nithindev'
 my_account_key = 'AJCUenkBC+LYslpZXFlJqha/pcNHWNBNoDQg/+rHb7QFktedIKuczFhMfbJPl2fn3lO6+xNkBDoXtm7QBSukFA=='
-api_key = 'AIzaSyAYejgqWu2uW9r53I5GGAVFWYHWKFAE8h4'
+api_key = 'AIzaSyANcAT5bp-yvBY35DlVdUaGHAU8D3Rr0Po'
 config_container = 'traffic-config'
 config_blobname = 'road_config.json'
 base_url = 'https://maps.googleapis.com/maps/api/distancematrix/json?'
@@ -23,11 +23,14 @@ blobservice.get_blob_to_path(container_name=config_container,
                              blob_name=config_blobname,
                              file_path=config_blobname
                             )
-blobservice.create_container('junction-123')
+logging.info('initialised')
 
+blobservice.create_container('junction-123')
 file_service = FileService(account_name=my_account_name,account_key=my_account_key)
 file_service.create_share('traffic-data')
 file_service.create_directory(share_name='traffic-data',directory_name='raw_data')
+file_service.create_directory(share_name='traffic-data',directory_name='clean_data')
+logging.info('created share and containers')
 
 with open('road_config.json','r') as f:
     road_config = json.load(f)
@@ -115,6 +118,29 @@ def main_worker():
                                        directory_name='raw_data',
                                        local_file_path=csv_name,
                                        file_name=csv_name.replace(":","-"))
+
+    try:
+        file_service.get_file_to_path(share_name='traffic-data',
+                                      directory_name='clean_data',
+                                      file_name='master.csv',
+                                     file_path='master_old.csv')
+        df_master = pd.read_csv('master_old.csv')
+        df_master = df_master.append(df)
+        df_master = df_master.sort_values(['ts_india']).reset_index(drop=True)
+        df_master.to_csv('master_new.csv',index=False)
+        file_service.create_file_from_path(share_name='traffic-data',
+                                          directory_name='clean_data',
+                                          file_name='master.csv',
+                                          local_file_path='master_new.csv')
+        logging.info("appended and updated")
+    except Exception as e:
+        logging.debug(f"Error occurred {e}")
+        df.to_csv('master_new.csv',index=False)
+        file_service.create_file_from_path(share_name='traffic-data',
+                                           directory_name='clean_data',
+                                           local_file_path='master_new.csv',
+                                           file_name='master.csv')
+
 def main(mytimer: func.TimerRequest) -> None:
     utc_timestamp = datetime.datetime.utcnow().replace(
         tzinfo=datetime.timezone.utc).isoformat()
