@@ -105,4 +105,4 @@ venv.bak/
 
 .python_packages
 traffic-prediction.zip
-notebooks/raw_data/
+notebooks/data/
